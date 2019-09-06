@@ -5,24 +5,15 @@
 #include "win-sprite.h"
 
 #define MAX_LOADSTRING 100
-#define MENU_ITEM_AUTHOR 0x01
+#define IDM_AUTHOR 0x01
 
 // Глобальные переменные:
 HINSTANCE hInst;                                // текущий экземпляр
 WCHAR szTitle[MAX_LOADSTRING];                  // Текст строки заголовка
 WCHAR szWindowClass[MAX_LOADSTRING];            // имя класса главного окна
 
-LPCWSTR lpAboutAuthor = L"Krestinin Vladislav, 751005\r\nhttps://github.com/IHavePortableBrain/win-sprite";
-LPCWSTR lpAboutAuthorMenuItemTitle = L"Author";
-
-HMENU g_hMenu;
-
-// Отправить объявления функций, включенных в этот модуль кода:
-ATOM                MyRegisterClass(HINSTANCE hInstance);
-BOOL                InitInstance(HINSTANCE, int);
-LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
-VOID AddMenus(HWND);
+HMENU hMenu;
+HBITMAP hBitmap;
 
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -38,7 +29,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     // Инициализация глобальных строк
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_WINSPRITE, szWindowClass, MAX_LOADSTRING);
-    MyRegisterClass(hInstance);
+    RegisterWindowClass(hInstance);
 
     // Выполнить инициализацию приложения:
     if (!InitInstance (hInstance, nCmdShow))
@@ -70,7 +61,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 //
 //  ЦЕЛЬ: Регистрирует класс окна.
 //
-ATOM MyRegisterClass(HINSTANCE hInstance)
+ATOM RegisterWindowClass(HINSTANCE hInstance)
 {
     WNDCLASSEXW wcex;
 
@@ -131,8 +122,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	
-
 	switch (message)
     {
     case WM_COMMAND:
@@ -147,23 +136,28 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             case IDM_EXIT:
                 DestroyWindow(hWnd);
                 break;
-			case MENU_ITEM_AUTHOR:
-				MessageBox(NULL, lpAboutAuthor, lpAboutAuthorMenuItemTitle, NULL);
+			case IDM_AUTHOR:
+				MessageBox(NULL, ABOUT_AUTHOR_TEXT, ABOUT_AUTHOR_TITLE, NULL);
 				break;
             default:
                 return DefWindowProc(hWnd, message, wParam, lParam);
             }
         }
         break;
-    case WM_PAINT:
+    case WM_PAINT: case WM_SIZING:
         {
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
             // TODO: Добавьте сюда любой код прорисовки, использующий HDC...
+			DrawSprite(ps);
             EndPaint(hWnd, &ps);
         }
         break;
 	case WM_CREATE:
+		if (!LoadSprite()) {
+			MessageBox(NULL, E_IMAGE_NOT_LOADED, ERROR_CAPTION, MB_OK);
+			PostQuitMessage(0);
+		}
 		AddMenus(hWnd);
 		break;
     case WM_DESTROY:
@@ -197,7 +191,40 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 VOID AddMenus(HWND hWnd)
 {
-	g_hMenu = GetMenu(hWnd);
-	AppendMenu(g_hMenu, MF_STRING, MENU_ITEM_AUTHOR, lpAboutAuthorMenuItemTitle);
+	hMenu = GetMenu(hWnd);
+	AppendMenu(hMenu, MF_STRING, IDM_AUTHOR, ABOUT_AUTHOR_TITLE);
 	//SetMenu(hWnd, g_hMenu);
+}
+
+BOOL LoadSprite()
+{
+	return (BOOL)(hBitmap = (HBITMAP)LoadImage(NULL, SPRITE_PATH, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE));
+}
+
+VOID DrawSprite(PAINTSTRUCT ps)
+{
+	HDC hMemDc;
+	BITMAP bmp;
+	HBITMAP hOldBmp;
+	RECT wndRect = ps.rcPaint;
+
+	hMemDc = CreateCompatibleDC(ps.hdc);
+	GetObject(hBitmap, sizeof(BITMAP), &bmp);
+	hOldBmp = (HBITMAP)SelectObject(hMemDc, hBitmap);
+	
+	GdiTransparentBlt(
+		ps.hdc,
+		(wndRect.right - wndRect.left - bmp.bmWidth) / 2,
+		(wndRect.bottom - wndRect.top - bmp.bmHeight) / 2,
+		bmp.bmWidth,
+		bmp.bmHeight,
+		hMemDc,
+		0,
+		0,
+		bmp.bmWidth,
+		bmp.bmHeight,
+		MASK_TRANSPARENT);
+	SelectObject(hMemDc, hOldBmp);
+	DeleteDC(hMemDc);
+	DeleteObject(hOldBmp);
 }
