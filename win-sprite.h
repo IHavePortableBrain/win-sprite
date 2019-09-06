@@ -10,6 +10,8 @@
 #define ERROR_CAPTION L"Error"
 #define MASK_TRANSPARENT RGB(255, 0, 255)
 
+#define SPRITE_MOVEMENT_STEP 5
+
 // Отправить объявления функций, включенных в этот модуль кода:
 ATOM                RegisterWindowClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);

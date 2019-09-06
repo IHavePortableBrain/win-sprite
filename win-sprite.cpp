@@ -15,6 +15,9 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // имя класса глав�
 HMENU hMenu;
 HBITMAP hBitmap;
 
+INT xSpriteOffset = 0;
+INT ySpriteOffset = 0;
+
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -144,7 +147,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         }
         break;
-    case WM_PAINT: case WM_SIZING:
+    case WM_PAINT: 
         {
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
@@ -153,6 +156,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             EndPaint(hWnd, &ps);
         }
         break;
+	case WM_MOUSEWHEEL:
+		if (GET_KEYSTATE_WPARAM(wParam) == MK_SHIFT) {
+			xSpriteOffset += (GET_WHEEL_DELTA_WPARAM(wParam) > 0) ? -SPRITE_MOVEMENT_STEP : SPRITE_MOVEMENT_STEP;
+		}
+		else {
+			ySpriteOffset += (GET_WHEEL_DELTA_WPARAM(wParam) > 0) ? -SPRITE_MOVEMENT_STEP : SPRITE_MOVEMENT_STEP;
+		}
+		RECT wndRect;
+		GetClientRect(hWnd, &wndRect);
+		InvalidateRect(hWnd, &wndRect, TRUE);
+		break;
 	case WM_CREATE:
 		if (!LoadSprite()) {
 			MessageBox(NULL, E_IMAGE_NOT_LOADED, ERROR_CAPTION, MB_OK);
@@ -214,8 +228,8 @@ VOID DrawSprite(PAINTSTRUCT ps)
 	
 	GdiTransparentBlt(
 		ps.hdc,
-		(wndRect.right - wndRect.left - bmp.bmWidth) / 2,
-		(wndRect.bottom - wndRect.top - bmp.bmHeight) / 2,
+		(wndRect.right - wndRect.left - bmp.bmWidth) / 2 + xSpriteOffset,
+		(wndRect.bottom - wndRect.top - bmp.bmHeight) / 2 + ySpriteOffset,
 		bmp.bmWidth,
 		bmp.bmHeight,
 		hMemDc,
