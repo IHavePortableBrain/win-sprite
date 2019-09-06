@@ -5,17 +5,25 @@
 #include "win-sprite.h"
 
 #define MAX_LOADSTRING 100
+#define MENU_ITEM_AUTHOR 0x01
 
 // Глобальные переменные:
 HINSTANCE hInst;                                // текущий экземпляр
 WCHAR szTitle[MAX_LOADSTRING];                  // Текст строки заголовка
 WCHAR szWindowClass[MAX_LOADSTRING];            // имя класса главного окна
 
+LPCWSTR lpAboutAuthor = L"Krestinin Vladislav, 751005\r\nhttps://github.com/IHavePortableBrain/win-sprite";
+LPCWSTR lpAboutAuthorMenuItemTitle = L"Author";
+
+HMENU g_hMenu;
+
 // Отправить объявления функций, включенных в этот модуль кода:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+VOID AddMenus(HWND);
+
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -123,7 +131,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    switch (message)
+	
+
+	switch (message)
     {
     case WM_COMMAND:
         {
@@ -137,6 +147,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             case IDM_EXIT:
                 DestroyWindow(hWnd);
                 break;
+			case MENU_ITEM_AUTHOR:
+				MessageBox(NULL, lpAboutAuthor, lpAboutAuthorMenuItemTitle, NULL);
+				break;
             default:
                 return DefWindowProc(hWnd, message, wParam, lParam);
             }
@@ -150,6 +163,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             EndPaint(hWnd, &ps);
         }
         break;
+	case WM_CREATE:
+		AddMenus(hWnd);
+		break;
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
@@ -177,4 +193,11 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     }
     return (INT_PTR)FALSE;
+}
+
+VOID AddMenus(HWND hWnd)
+{
+	g_hMenu = GetMenu(hWnd);
+	AppendMenu(g_hMenu, MF_STRING, MENU_ITEM_AUTHOR, lpAboutAuthorMenuItemTitle);
+	//SetMenu(hWnd, g_hMenu);
 }
