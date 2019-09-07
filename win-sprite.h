@@ -11,6 +11,13 @@
 #define MASK_TRANSPARENT RGB(255, 0, 255)
 
 #define SPRITE_MOVEMENT_STEP 5
+#define MOVE_UP 0x01
+#define MOVE_DOWN 0x02
+#define MOVE_LEFT 0x03
+#define MOVE_RIGHT 0x04
+#define IDT_SPRITE_TIMER 0xFF
+#define SPRITE_TIMER_INTERVAL 50
+
 
 // Отправить объявления функций, включенных в этот модуль кода:
 ATOM                RegisterWindowClass(HINSTANCE hInstance);
@@ -20,3 +27,8 @@ INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 VOID AddMenus(HWND);
 BOOL LoadSprite();
 VOID DrawSprite(PAINTSTRUCT ps);
+
+VOID ProtectBorders(INT, INT, INT, INT, INT, INT);
+VOID MoveSpriteMW(WPARAM);
+VOID MoveSpriteOnMouseWheel(WPARAM);
+VOID CALLBACK MoveSpriteOnTimer(HWND, UINT, UINT_PTR, DWORD);

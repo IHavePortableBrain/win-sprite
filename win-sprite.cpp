@@ -18,6 +18,8 @@ HBITMAP hBitmap;
 INT xSpriteOffset = 0;
 INT ySpriteOffset = 0;
 
+SHORT nSpriteDirection = MOVE_RIGHT;
+
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -129,57 +131,57 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
     case WM_COMMAND:
         {
-            int wmId = LOWORD(wParam);
-            // Разобрать выбор в меню:
-            switch (wmId)
-            {
-            case IDM_ABOUT:
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-                break;
-            case IDM_EXIT:
-                DestroyWindow(hWnd);
-                break;
-			case IDM_AUTHOR:
-				MessageBox(NULL, ABOUT_AUTHOR_TEXT, ABOUT_AUTHOR_TITLE, NULL);
-				break;
-            default:
-                return DefWindowProc(hWnd, message, wParam, lParam);
-            }
+        int wmId = LOWORD(wParam);
+        // Разобрать выбор в меню:
+        switch (wmId)
+        {
+        case IDM_ABOUT:
+            DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+            break;
+        case IDM_EXIT:
+            DestroyWindow(hWnd);
+            break;
+		case IDM_AUTHOR:
+			MessageBox(NULL, ABOUT_AUTHOR_TEXT, ABOUT_AUTHOR_TITLE, NULL);
+			break;
+        default:
+            return DefWindowProc(hWnd, message, wParam, lParam);
+        }
         }
         break;
     case WM_PAINT: 
         {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: Добавьте сюда любой код прорисовки, использующий HDC...
-			DrawSprite(ps);
-            EndPaint(hWnd, &ps);
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hWnd, &ps);
+        // TODO: Добавьте сюда любой код прорисовки, использующий HDC...
+		DrawSprite(ps);
+        EndPaint(hWnd, &ps);
         }
         break;
 	case WM_MOUSEWHEEL:
-		if (GET_KEYSTATE_WPARAM(wParam) == MK_SHIFT) {
-			xSpriteOffset += (GET_WHEEL_DELTA_WPARAM(wParam) > 0) ? -SPRITE_MOVEMENT_STEP : SPRITE_MOVEMENT_STEP;
-		}
-		else {
-			ySpriteOffset += (GET_WHEEL_DELTA_WPARAM(wParam) > 0) ? -SPRITE_MOVEMENT_STEP : SPRITE_MOVEMENT_STEP;
-		}
+		{
+		MoveSpriteOnMouseWheel(wParam);
 		RECT wndRect;
 		GetClientRect(hWnd, &wndRect);
 		InvalidateRect(hWnd, &wndRect, TRUE);
 		break;
+		}
 	case WM_CREATE:
 		if (!LoadSprite()) {
 			MessageBox(NULL, E_IMAGE_NOT_LOADED, ERROR_CAPTION, MB_OK);
 			PostQuitMessage(0);
 		}
+		SetTimer(hWnd, IDT_SPRITE_TIMER, SPRITE_TIMER_INTERVAL, MoveSpriteOnTimer);
 		AddMenus(hWnd);
 		break;
     case WM_DESTROY:
+		KillTimer(hWnd, IDT_SPRITE_TIMER);
         PostQuitMessage(0);
         break;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
+	
     return 0;
 }
 
@@ -219,17 +221,20 @@ VOID DrawSprite(PAINTSTRUCT ps)
 {
 	HDC hMemDc;
 	BITMAP bmp;
-	HBITMAP hOldBmp;
+	//HBITMAP hOldBmp;
 	RECT wndRect = ps.rcPaint;
+	INT wndWidth = wndRect.right - wndRect.left;
+	INT wndHeight = wndRect.bottom - wndRect.top;
 
 	hMemDc = CreateCompatibleDC(ps.hdc);
 	GetObject(hBitmap, sizeof(BITMAP), &bmp);
-	hOldBmp = (HBITMAP)SelectObject(hMemDc, hBitmap);
+	//hOldBmp = (HBITMAP)SelectObject(hMemDc, hBitmap);
+	(HBITMAP)SelectObject(hMemDc, hBitmap);
 	
 	GdiTransparentBlt(
 		ps.hdc,
-		(wndRect.right - wndRect.left - bmp.bmWidth) / 2 + xSpriteOffset,
-		(wndRect.bottom - wndRect.top - bmp.bmHeight) / 2 + ySpriteOffset,
+		xSpriteOffset,
+		ySpriteOffset,
 		bmp.bmWidth,
 		bmp.bmHeight,
 		hMemDc,
@@ -238,7 +243,77 @@ VOID DrawSprite(PAINTSTRUCT ps)
 		bmp.bmWidth,
 		bmp.bmHeight,
 		MASK_TRANSPARENT);
-	SelectObject(hMemDc, hOldBmp);
+	//SelectObject(hMemDc, hOldBmp);
 	DeleteDC(hMemDc);
-	DeleteObject(hOldBmp);
+	//DeleteObject(hOldBmp);
+}
+
+VOID MoveSpriteOnMouseWheel(WPARAM wParam)
+{
+	if (GET_KEYSTATE_WPARAM(wParam) == MK_SHIFT) {
+		if (GET_WHEEL_DELTA_WPARAM(wParam) > 0) {
+			nSpriteDirection = MOVE_LEFT;
+			//xSpriteOffset += SPRITE_MOVEMENT_STEP;
+		}
+		else {
+			nSpriteDirection = MOVE_RIGHT;
+			//xSpriteOffset -= SPRITE_MOVEMENT_STEP;
+		}
+	}
+	else {
+		if (GET_WHEEL_DELTA_WPARAM(wParam) > 0) {
+			nSpriteDirection = MOVE_UP;
+			//ySpriteOffset += SPRITE_MOVEMENT_STEP;
+		}
+		else {
+			nSpriteDirection = MOVE_DOWN;
+			//ySpriteOffset -= SPRITE_MOVEMENT_STEP;
+		}
+	}
+}
+
+VOID ProtectBorders(INT xDest, INT yDest, INT widthDest, INT heightDest, INT wndWidth, INT wndHeight)
+{
+	if (xDest <= 0) {
+		nSpriteDirection = MOVE_RIGHT;
+		//xSpriteOffset = -(widthWnd - widthDest) / 2;
+	}
+	else if (xDest + widthDest >= wndWidth) {
+		nSpriteDirection = MOVE_LEFT;
+		//xSpriteOffset = (widthWnd - widthDest) / 2;
+	}
+	else if (yDest <= 0) {
+		nSpriteDirection = MOVE_DOWN;
+		//ySpriteOffset = -(heightWnd - heightDest) / 2;
+	}
+	else if (yDest + heightDest >= wndHeight) {
+		nSpriteDirection = MOVE_UP;
+		//ySpriteOffset = (heightWnd - heightDest) / 2;
+	}
+}
+
+VOID CALLBACK MoveSpriteOnTimer(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime) {
+	BITMAP bmp;
+	GetObject(hBitmap, sizeof(BITMAP), &bmp);
+	RECT wndRect;
+	GetClientRect(hWnd, &wndRect);
+	INT wndWidth = wndRect.right - wndRect.left;
+	INT wndHeight = wndRect.bottom - wndRect.top;
+	ProtectBorders(xSpriteOffset, ySpriteOffset, bmp.bmWidth, bmp.bmHeight, wndWidth, wndHeight);
+	switch (nSpriteDirection) {
+	case MOVE_UP:
+		ySpriteOffset -= SPRITE_MOVEMENT_STEP;
+		break;
+	case MOVE_DOWN:
+		ySpriteOffset += SPRITE_MOVEMENT_STEP;
+		break;
+	case MOVE_LEFT:
+		xSpriteOffset -= SPRITE_MOVEMENT_STEP;
+		break;
+	case MOVE_RIGHT:
+		xSpriteOffset += SPRITE_MOVEMENT_STEP;
+		break;
+	}
+	
+	InvalidateRect(hWnd, &wndRect, TRUE);
 }
